@@ -59,4 +59,47 @@ fun CategoriesScreen(navController: NavHostController) {
                     response.body()?.categories?.let { fetchedCategories ->
                         categories.addAll(fetchedCategories)
                     }
-                }
+                }        } catch (e: Exception) {
+                println("Error: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    // Mostrar un LazyColumn con las categorías
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        items(categories) { category ->
+            CategoryItem(category = category, onClick = {
+                // Navegar a la pantalla de recetas cuando se haga clic en una categoría
+                navController.navigate("meals/${category.strCategory}")
+            })
+        }
+    }
+}
+
+@Composable
+fun CategoryItem(category: Category, onClick: () -> Unit) {
+    // Diseño de cada elemento de la categoría
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable(onClick = onClick), // Detectar clic
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(modifier = Modifier.padding(16.dp)) {
+            // Imagen de la categoría
+            Image(
+                painter = rememberAsyncImagePainter(model = category.strCategoryThumb),
+                contentDescription = "Category Image",
+                modifier = Modifier
+                    .size(64.dp)
+                    .padding(end = 16.dp)
+            )
+            // Nombre de la categoría
+            Text(text = category.strCategory, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
