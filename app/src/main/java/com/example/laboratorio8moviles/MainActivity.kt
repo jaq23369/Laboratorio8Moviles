@@ -34,4 +34,29 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = navController, startDestination = "categories") {
                     composable("categories") { CategoriesScreen(navController) }
                     composable("meals/{categoryName}") { backStackEntry ->
-                        val categoryName =
+                        val categoryName =backStackEntry.arguments?.getString("categoryName")
+                        MealsScreen(navController, categoryName ?: "")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoriesScreen(navController: NavHostController) {
+    val categories = remember { mutableStateListOf<Category>() }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Hacer la solicitud a la API dentro de una coroutine
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.api.getCategories()
+                }
+                if (response.isSuccessful) {
+                    response.body()?.categories?.let { fetchedCategories ->
+                        categories.addAll(fetchedCategories)
+                    }
+                }
