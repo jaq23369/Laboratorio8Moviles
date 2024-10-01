@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -27,21 +28,31 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             Laboratorio8MovilesTheme {
-                // Creamos un NavController
+                // Creamos un NavController para manejar la navegación
                 val navController = rememberNavController()
 
-                // Configuramos el NavHost con dos pantallas: Categorías y Recetas
+                // Definimos el NavHost para manejar las rutas entre pantallas
                 NavHost(navController = navController, startDestination = "categories") {
+                    // Pantalla de categorías
                     composable("categories") { CategoriesScreen(navController) }
+
+                    // Pantalla de recetas filtradas por categoría
                     composable("meals/{categoryName}") { backStackEntry ->
-                        val categoryName =backStackEntry.arguments?.getString("categoryName")
+                        val categoryName = backStackEntry.arguments?.getString("categoryName")
                         MealsScreen(navController, categoryName ?: "")
+                    }
+
+                    // Pantalla de detalles de la receta
+                    composable("mealDetails/{mealId}") { backStackEntry ->
+                        val mealId = backStackEntry.arguments?.getString("mealId")
+                        MealDetailScreen(navController, mealId ?: "")
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun CategoriesScreen(navController: NavHostController) {
@@ -81,7 +92,6 @@ fun CategoriesScreen(navController: NavHostController) {
 
 @Composable
 fun CategoryItem(category: Category, onClick: () -> Unit) {
-    // Diseño de cada elemento de la categoría
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -132,8 +142,8 @@ fun MealsScreen(navController: NavHostController, categoryName: String) {
     ) {
         items(meals) { meal ->
             MealItem(meal = meal, onClick = {
-                // Aquí podrías navegar a la pantalla de detalles de la receta
-                // navController.navigate("mealDetails/${meal.idMeal}")
+                // Navegar a la pantalla de detalles de la receta
+                navController.navigate("mealDetails/${meal.idMeal}")
             })
         }
     }
@@ -141,7 +151,6 @@ fun MealsScreen(navController: NavHostController, categoryName: String) {
 
 @Composable
 fun MealItem(meal: Meal, onClick: () -> Unit) {
-    // Diseño de cada elemento de la receta
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -150,7 +159,6 @@ fun MealItem(meal: Meal, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp)) {
-            // Imagen de la receta
             Image(
                 painter = rememberAsyncImagePainter(model = meal.strMealThumb),
                 contentDescription = "Meal Image",
@@ -158,8 +166,64 @@ fun MealItem(meal: Meal, onClick: () -> Unit) {
                     .size(64.dp)
                     .padding(end = 16.dp)
             )
-            // Nombre de la receta
             Text(text = meal.strMeal, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+@Composable
+fun MealDetailScreen(navController: NavHostController, mealId: String) {
+    // Variable para almacenar los detalles de la receta
+    val mealDetail = remember { mutableStateOf<MealDetail?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Hacer la solicitud a la API para obtener los detalles de la receta
+    LaunchedEffect(mealId) {
+        coroutineScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.api.getMealDetails(mealId)
+                }
+                if (response.isSuccessful) {
+                    response.body()?.meals?.firstOrNull()?.let {
+                        mealDetail.value = it
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    // Mostrar los detalles de la receta
+    mealDetail.value?.let { meal ->
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = meal.strMeal,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Image(
+                painter = rememberAsyncImagePainter(model = meal.strMealThumb),
+                contentDescription = "Meal Image",
+                modifier = Modifier.fillMaxWidth().height(200.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Instructions",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = meal.strInstructions,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    } ?: run {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
     }
 }
